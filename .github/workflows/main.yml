@@ -52,45 +52,7 @@ jobs:
           "EXTRA_DISK=E:" | Out-File -FilePath $env:GITHUB_ENV -Append
           "STORAGE_ROOT=D:\storage" | Out-File -FilePath $env:GITHUB_ENV -Append
           New-Item -ItemType Directory -Force -Path "D:\storage" | Out-Null
-
-      # ─────────────────────────────────────────────
-      # 2. INSTALAR MESA3D (OpenGL SOFTWARE RENDERER)
-      # ─────────────────────────────────────────────
-      - name: Install Mesa3D OpenGL (Software GPU)
-        run: |
-          $mesaUrl = "https://github.com/pal1000/mesa-dist-win/releases/download/24.3.4/mesa3d-24.3.4-release-mingw.7z"
-          $sevenZipUrl = "https://www.7-zip.org/a/7zr.exe"
-          
-          Invoke-WebRequest -Uri $sevenZipUrl -OutFile "$env:TEMP\7zr.exe" -UseBasicParsing
-          
-          Write-Host "Downloading Mesa3D..." -ForegroundColor Cyan
-          Invoke-WebRequest -Uri $mesaUrl -OutFile "$env:TEMP\mesa3d.7z" -UseBasicParsing
-          
-          $mesaDir = "C:\mesa3d"
-          New-Item -ItemType Directory -Force -Path $mesaDir | Out-Null
-          & "$env:TEMP\7zr.exe" x "$env:TEMP\mesa3d.7z" -o"$mesaDir" -y | Out-Null
-          
-          $installScript = Get-ChildItem -Path $mesaDir -Filter "systemwidedeploy.cmd" -Recurse | Select-Object -First 1
-          if ($installScript) {
-            Write-Host "Installing Mesa3D system-wide..." -ForegroundColor Cyan
-            & cmd /c "`"$($installScript.FullName)`" x64"
-          } else {
-            $x64dir = Get-ChildItem -Path $mesaDir -Filter "x64" -Recurse -Directory | Select-Object -First 1
-            if ($x64dir) {
-              Copy-Item "$($x64dir.FullName)\opengl32.dll" "C:\Windows\System32\" -Force
-              Copy-Item "$($x64dir.FullName)\*.dll" "C:\Windows\System32\" -Force -ErrorAction SilentlyContinue
-            }
-          }
-          
-          $openglDll = Test-Path "C:\Windows\System32\opengl32.dll"
-          Write-Host "OpenGL DLL present: $openglDll" -ForegroundColor Green
-          
-          $vcUrl = "https://aka.ms/vs/17/release/vc_redist.x64.exe"
-          Invoke-WebRequest -Uri $vcUrl -OutFile "$env:TEMP\vc_redist.x64.exe" -UseBasicParsing
-          Start-Process "$env:TEMP\vc_redist.x64.exe" -ArgumentList "/quiet", "/norestart" -Wait
-          
-          Write-Host "Mesa3D (software OpenGL) installed successfully" -ForegroundColor Green
-
+        
       # ─────────────────────────────────────────────
       # 3. INSTALAR NODE.JS + NPM
       # ─────────────────────────────────────────────
