@@ -179,7 +179,7 @@ jobs:
           Write-Host "║  STORAGE                                         ║" -ForegroundColor Cyan
           Write-Host "║  C: ~14GB (sistema)                              ║"
           Write-Host "║  D: ~70GB (runner disk)                          ║"
-          Write-Host "║  E: ~100GB (VHD extra)                           ║"
+          Write-Host "║  E: ~1000GB (VHD extra)                           ║"
           Write-Host "╚══════════════════════════════════════════════════╝" -ForegroundColor Cyan
           Write-Host ""
 
