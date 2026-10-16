@@ -1,3 +1,4 @@
+
 name: RDP
 on:
   workflow_dispatch:
@@ -5,12 +6,9 @@ on:
 jobs:
   secure-rdp:
     runs-on: windows-latest
-    timeout-minutes: 360   # máximo real de GitHub en runners gratis/hosted
+    timeout-minutes: 360
 
     steps:
-      # ─────────────────────────────────────────────
-      # 1. HERRAMIENTAS: Node (para opencode), Python, Git
-      # ─────────────────────────────────────────────
       - name: Install Node, Python, Git
         shell: pwsh
         run: |
@@ -21,9 +19,6 @@ jobs:
           python --version
           git --version
 
-      # ─────────────────────────────────────────────
-      # 2. OPENCODE
-      # ─────────────────────────────────────────────
       - name: Install OpenCode
         shell: pwsh
         run: |
@@ -37,11 +32,6 @@ jobs:
           $env:Path += ";$npmBin"
           opencode --version
 
-      # ─────────────────────────────────────────────
-      # 3. ACELERACIÓN 3D (Mesa3D llvmpipe) - MODO SEGURO
-      #    NO se toca System32 (eso es lo que causaba crashes).
-      #    Mesa queda en C:\mesa3d y se copia por app cuando haga falta.
-      # ─────────────────────────────────────────────
       - name: Install Mesa3D (safe mode)
         shell: pwsh
         run: |
@@ -53,11 +43,9 @@ jobs:
           New-Item -ItemType Directory -Force -Path $mesaDir | Out-Null
           & "C:\Program Files\7-Zip\7z.exe" x "$env:TEMP\mesa3d.7z" -o"$mesaDir" -y | Out-Null
 
-          # Runtime de Visual C++ (necesario para Mesa)
           Invoke-WebRequest -Uri "https://aka.ms/vs/17/release/vc_redist.x64.exe" -OutFile "$env:TEMP\vc.exe" -UseBasicParsing
           Start-Process "$env:TEMP\vc.exe" -ArgumentList "/quiet","/norestart" -Wait
 
-          # Variables globales: fuerzan el renderer por software y subimos la versión de OpenGL
           $vars = @{
             "GALLIUM_DRIVER"              = "llvmpipe"
             "LP_NUM_THREADS"              = "$env:NUMBER_OF_PROCESSORS"
@@ -69,7 +57,6 @@ jobs:
             [Environment]::SetEnvironmentVariable($k, $vars[$k], "Machine")
           }
 
-          # Script para activar Mesa en una app concreta (arrastra la carpeta del .exe sobre el .bat)
           $x64 = (Get-ChildItem $mesaDir -Directory -Recurse -Filter "x64" | Select-Object -First 1).FullName
           $bat = @"
           @echo off
@@ -83,9 +70,6 @@ jobs:
           Set-Content -Path "C:\Users\Public\Desktop\Activar-3D-en-app.bat" -Value $bat -Encoding ASCII
           Write-Host "Mesa3D listo en $x64 (sin tocar System32)" -ForegroundColor Green
 
-      # ─────────────────────────────────────────────
-      # 4. CONFIGURAR RDP
-      # ─────────────────────────────────────────────
       - name: Configure RDP
         shell: pwsh
         run: |
@@ -96,15 +80,11 @@ jobs:
           netsh advfirewall firewall add rule name="RDP-Tailscale" dir=in action=allow protocol=TCP localport=3389
           Restart-Service -Name TermService -Force
 
-      # ─────────────────────────────────────────────
-      # 5. USUARIO RDP
-      # ─────────────────────────────────────────────
       - name: Create RDP User
         shell: pwsh
         run: |
-          $chars = [char[]]((65..90) + (97..122) + (48..57) + @(33,35,36,37,38,42,43,45,61,64))
-          $password = -join (1..20 | ForEach-Object { $chars | Get-Random })
-          $password = "Aa1!" + $password   # garantiza complejidad
+          # CONTRASEÑA FIJA: medina
+          $password = "medina"
           Write-Host "::add-mask::$password"
 
           $secure = ConvertTo-SecureString $password -AsPlainText -Force
@@ -115,9 +95,6 @@ jobs:
 
           "RDP_PASSWORD=$password" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
-      # ─────────────────────────────────────────────
-      # 6. TAILSCALE
-      # ─────────────────────────────────────────────
       - name: Install Tailscale
         shell: pwsh
         run: |
@@ -141,9 +118,6 @@ jobs:
           if (-not $tsIP) { Write-Error "Tailscale IP not assigned."; exit 1 }
           "TAILSCALE_IP=$tsIP" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
-      # ─────────────────────────────────────────────
-      # 7. VERIFICAR
-      # ─────────────────────────────────────────────
       - name: Verify
         shell: pwsh
         run: |
@@ -159,9 +133,6 @@ jobs:
           Write-Host "OpenCode: $(opencode --version)"
           Write-Host "Mesa3D : $(Test-Path 'C:\mesa3d')"
 
-      # ─────────────────────────────────────────────
-      # 8. MANTENER SESIÓN ACTIVA
-      # ─────────────────────────────────────────────
       - name: Keep Alive
         shell: pwsh
         run: |
