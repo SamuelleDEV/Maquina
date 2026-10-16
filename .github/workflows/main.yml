@@ -1,4 +1,3 @@
-
 name: RDP
 on:
   workflow_dispatch:
@@ -83,16 +82,52 @@ jobs:
       - name: Create RDP User
         shell: pwsh
         run: |
-          # CONTRASEÑA FIJA: medina
-          $password = "medina"
-          Write-Host "::add-mask::$password"
-
+          # Generar contraseña aleatoria robusta (20 caracteres)
+          $upper = (65..90) | ForEach-Object { [char]$_ }
+          $lower = (97..122) | ForEach-Object { [char]$_ }
+          $digits = (48..57) | ForEach-Object { [char]$_ }
+          $symbols = @(33,35,36,37,38,42,43,45,61,64,63) | ForEach-Object { [char]$_ }
+          
+          # Asegurar al menos uno de cada tipo
+          $password = @(
+            $upper | Get-Random
+            $upper | Get-Random
+            $lower | Get-Random
+            $lower | Get-Random
+            $digits | Get-Random
+            $digits | Get-Random
+            $symbols | Get-Random
+            $symbols | Get-Random
+          )
+          
+          # Completar hasta 20 caracteres aleatorios
+          $allChars = $upper + $lower + $digits + $symbols
+          while ($password.Count -lt 20) {
+            $password += $allChars | Get-Random
+          }
+          
+          # Mezclar
+          $password = -join ($password | Sort-Object { Get-Random })
+          
+          # MOSTRAR CONTRASEÑA COMPLETA (evitando filtros de GitHub)
+          Write-Host "=========================================="
+          Write-Host "CONTRASEÑA RDP GENERADA:"
+          Write-Host $password
+          Write-Host "=========================================="
+          
+          # También guardar en archivo por si acaso
+          $password | Out-File -FilePath "$env:USERPROFILE\Desktop\rdp_password.txt" -Encoding utf8
+          
           $secure = ConvertTo-SecureString $password -AsPlainText -Force
           New-LocalUser -Name "RDP" -Password $secure -AccountNeverExpires -ErrorAction SilentlyContinue | Out-Null
           Add-LocalGroupMember -Group "Administrators" -Member "RDP" -ErrorAction SilentlyContinue
           Add-LocalGroupMember -Group "Remote Desktop Users" -Member "RDP" -ErrorAction SilentlyContinue
-          if (-not (Get-LocalUser -Name "RDP" -ErrorAction SilentlyContinue)) { Write-Error "User creation failed"; exit 1 }
-
+          
+          if (-not (Get-LocalUser -Name "RDP" -ErrorAction SilentlyContinue)) { 
+            Write-Error "User creation failed"
+            exit 1 
+          }
+          
           "RDP_PASSWORD=$password" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Install Tailscale
